@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MECHANISCHER DISPUT - ABSORBER UPDATE</title>
+<style>
+  :root {
+    --bg-dark: #050811;
+    --panel-bg: rgba(13, 20, 36, 0.85);
+    --metal-border: #233554;
+    --metal-bright: #486581;
+    --neon-cyan: #00f0ff;
+    --neon-atk: #ff2a5f;
+    --neon-def: #05d686;
+    --neon-gold: #ffbe0b;
+    --neon-purple: #c77dff;
+    --text-main: #f8faff;
+    --text-muted: #829ab1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  .grid-fx {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.15;
+    background-size: 24px 24px;
+    background-image: 
+      radial-gradient(circle, rgba(0,240,255,0.2) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+  }
+
+  #app-root { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; z-index: 1; }
+  .shake { animation: shake 0.28s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-3px, 1px, 0); }
+    20%, 80% { transform: translate3d(4px, -2px, 0); }
+    30%, 50%, 70% { transform: translate3d(-5px, 3px, 0); }
+    40%, 60% { transform: translate3d(5px, -1px, 0); }
+  }
+
+  .top-bar { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 6px 14px; background: rgba(8, 12, 22, 0.95); 
+    border-bottom: 1px solid var(--metal-border); font-size: 11px; font-weight: 800;
+    backdrop-filter: blur(8px);
+  }
+  .top-tools { display: flex; gap: 8px; align-items: center; }
+  .btn-icon { 
+    background: #101c33; border: 1px solid var(--metal-bright); color: var(--neon-gold); 
+    border-radius: 6px; padding: 4px 9px; font-size: 11px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+
+  #phase-tracker {
+    display: flex; background: rgba(7, 11, 20, 0.95); border-bottom: 1px solid var(--metal-border); 
+    font-size: 10px; font-weight: 900; letter-spacing: 0.5px;
+  }
+  .phase-step { flex: 1; padding: 6px 2px; text-align: center; color: var(--text-muted); border-bottom: 2px solid transparent; transition: 0.2s; }
+  .phase-step.active { color: var(--neon-cyan); border-bottom-color: var(--neon-cyan); background: rgba(0, 240, 255, 0.08); text-shadow: 0 0 8px rgba(0,240,255,0.5); }
+
+  .status-bar { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 6px 16px; background: var(--panel-bg); font-size: 12px; font-weight: 800; 
+    border-bottom: 1px solid var(--metal-border); backdrop-filter: blur(10px);
+  }
+  .status-bar.player { border-top: 1px solid var(--metal-border); border-bottom: none; }
+  .val-lp { color: var(--neon-def); font-size: 18px; font-weight: 900; text-shadow: 0 0 8px rgba(5,214,134,0.4); }
+  .val-ap { color: var(--neon-gold); font-size: 18px; font-weight: 900; text-shadow: 0 0 8px rgba(255,190,11,0.4); }
+
+  #arena { 
+    flex: 1; display: flex; flex-direction: column; justify-content: space-between; 
+    padding: 8px; position: relative; 
+  }
+  .lane { display: flex; gap: 8px; height: 32%; }
+  
+  .slot {
+    flex: 1; background: rgba(14, 21, 37, 0.45);
+    border: 1.5px dashed rgba(72, 101, 129, 0.6); border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; font-size: 10px; font-weight: 800; color: var(--text-muted); 
+    cursor: pointer; transition: 0.2s; backdrop-filter: blur(4px);
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.6);
+  }
+  .slot.target-highlight { 
+    border-color: var(--neon-gold) !important; 
+    background: rgba(255,190,11,0.15) !important; 
+    box-shadow: 0 0 16px rgba(255,190,11,0.4), inset 0 0 8px var(--neon-gold) !important; 
+  }
+
+  .board-card {
+    width: 100%; height: 100%; border-radius: 8px;
+    background: linear-gradient(145deg, #162238 0%, #0d1527 100%);
+    border: 2px solid var(--metal-bright); display: flex; flex-direction: column; 
+    justify-content: space-between; padding: 5px; box-sizing: border-box; 
+    position: relative; overflow: hidden; box-shadow: 0 6px 14px rgba(0,0,0,0.6);
+    animation: cardDropIn 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  }
+  @keyframes cardDropIn {
+    from { transform: scale(0.9) translateY(-6px); opacity: 0.5; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .board-card.mode-atk { 
+    border-color: var(--neon-atk); 
+    box-shadow: 0 0 10px rgba(255,42,95,0.35), inset 0 0 8px rgba(255,42,95,0.2); 
+  }
+  .board-card.mode-def { 
+    border-color: var(--neon-def); border-style: dashed; 
+    box-shadow: 0 0 10px rgba(5,214,134,0.3), inset 0 0 8px rgba(5,214,134,0.15); 
+  }
+  .board-card.exhausted { filter: grayscale(0.7) brightness(0.75); }
+  
+  .bc-rank { 
+    position: absolute; top: 3px; right: 4px; font-size: 9px; font-weight: 900; 
+    color: var(--neon-cyan); background: rgba(5,8,17,0.85); padding: 1px 5px; 
+    border-radius: 4px; border: 1px solid var(--neon-cyan); 
+  }
+  .bc-name { 
+    font-size: 11px; font-weight: 900; text-align: center; white-space: nowrap; 
+    overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.5px;
+  }
+  
+  .card-holo-core {
+    flex: 1; margin: 3px 0; border-radius: 6px;
+    background: radial-gradient(circle, rgba(0,240,255,0.12) 0%, rgba(13,21,39,0.7) 100%);
+    border: 1px solid rgba(0,240,255,0.25);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+
+  .bc-stats { display: flex; justify-content: space-around; font-size: 15px; font-weight: 900; }
+  .bc-meta { display: flex; justify-content: space-between; font-size: 9px; font-weight: 800; color: var(--text-muted); }
+
+  #mid-bar { 
+    display: flex; align-items: center; justify-content: space-between; 
+    height: 48px; gap: 8px; padding: 0 8px; 
+    background: rgba(10, 16, 28, 0.85); border-radius: 10px;
+    border: 1px solid var(--metal-border); backdrop-filter: blur(8px);
+  }
+  #status-log { 
+    flex: 1; font-size: 11px; color: var(--neon-gold); text-align: center; 
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+    font-weight: 900; letter-spacing: 0.3px;
+  }
+  .sys-btn { 
+    background: #14223b; border: 1.5px solid var(--metal-bright); color: #fff; 
+    padding: 8px 12px; border-radius: 7px; font-size: 11px; font-weight: 900; 
+    cursor: pointer; white-space: nowrap; transition: 0.15s;
+  }
+  .btn-phase { background: #0066cc; border: 1.5px solid #3399ff; box-shadow: 0 0 10px rgba(0,102,204,0.4); }
+  .sys-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none !important; animation: none !important; }
+
+  .focus-action {
+    border-color: var(--neon-cyan) !important;
+    background: rgba(0, 240, 255, 0.25) !important;
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.6) !important;
+    animation: pulseGlow 1.2s infinite alternate;
+  }
+  @keyframes pulseGlow {
+    from { transform: scale(1); box-shadow: 0 0 6px rgba(0,240,255,0.4); }
+    to { transform: scale(1.04); box-shadow: 0 0 18px rgba(0,240,255,0.85); }
+  }
+
+  #bot-action-banner {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(13, 20, 36, 0.96); border: 2px solid var(--neon-gold); border-radius: 10px;
+    padding: 12px 20px; font-size: 13px; font-weight: 900; color: #fff;
+    box-shadow: 0 0 25px rgba(255, 190, 11, 0.45); text-align: center;
+    z-index: 80; display: none; pointer-events: none; max-width: 85%;
+  }
+
+  #hand-bar { 
+    height: 165px; background: rgba(10, 15, 26, 0.95); 
+    border-top: 2px solid var(--metal-bright); display: flex; 
+    overflow-x: auto; padding: 8px 10px; gap: 10px; align-items: center; 
+  }
+  .hand-card {
+    min-width: 98px; max-width: 98px; height: 148px; 
+    background: linear-gradient(150deg, #17243c 0%, #0d1629 100%);
+    border: 1.5px solid var(--metal-bright); border-radius: 8px; 
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-between;
+    font-size: 10px; flex-shrink: 0; box-shadow: 0 6px 12px rgba(0,0,0,0.6); 
+    cursor: pointer; transition: 0.15s; position: relative;
+  }
+  .hand-card.titan { 
+    border: 2px solid var(--neon-gold); 
+    box-shadow: 0 0 10px rgba(255,190,11,0.35); 
+    background: linear-gradient(150deg, #242417 0%, #101524 100%);
+  }
+  .hand-card.joker { 
+    border: 2px solid var(--neon-purple); 
+    box-shadow: 0 0 12px rgba(199,125,255,0.45); 
+    background: linear-gradient(150deg, #281233 0%, #0d1527 100%);
+  }
+  .hand-card.selected { transform: translateY(-10px); border-color: #fff; box-shadow: 0 0 16px rgba(255,255,255,0.7); }
+  .hand-card.disabled-phase { opacity: 0.45; filter: grayscale(0.6); pointer-events: none; }
+  .hc-badge { font-size: 9px; font-weight: 900; color: var(--neon-gold); display: flex; justify-content: space-between; }
+  .hc-stats { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; margin: 1px 0; }
+  .hc-eff { font-size: 9px; line-height: 1.15; color: #a4b6cf; height: 38px; overflow: hidden; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 16px; }
+  .choice-box { background: #0f172a; border: 1.5px solid var(--metal-bright); border-radius: 12px; padding: 16px; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+  .m-row { display: flex; gap: 8px; }
+  .btn-action { flex: 1; padding: 10px 4px; border: none; border-radius: 6px; font-size: 12px; font-weight: 800; color: #fff; cursor: pointer; }
+  .btn-atk { background: var(--neon-atk); }
+  .btn-def { background: #007aff; }
+  .btn-fuse { background: var(--neon-cyan); color: #000; font-weight: 900; }
+  .btn-purple { background: var(--neon-purple); }
+  .btn-gray { background: #222d42; }
+
+  .inspect-card-box {
+    background: #0d1527; border: 2px solid var(--neon-cyan); border-radius: 14px;
+    padding: 18px; width: 90%; max-width: 320px; display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 0 25px rgba(0,240,255,0.4); animation: zoomInspect 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  }
+  @keyframes zoomInspect {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .inspect-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--metal-bright); padding-bottom: 6px; }
+  .inspect-name { font-size: 18px; font-weight: 900; color: var(--neon-gold); letter-spacing: 0.5px; }
+  .inspect-cost { font-size: 12px; font-weight: bold; color: var(--neon-cyan); }
+  .inspect-stats-row { display: flex; justify-content: space-around; background: #14223b; border-radius: 8px; padding: 10px; border: 1px solid var(--metal-border); }
+  .inspect-stat { font-size: 22px; font-weight: 900; display: flex; flex-direction: column; align-items: center; }
+  .inspect-stat small { font-size: 9px; color: var(--text-muted); font-weight: normal; }
+  .inspect-desc-box { background: #070d18; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.45; text-align: left; border: 1px solid #1c2b42; }
+
+  .tribute-select-card {
+    background: #16243d; border: 2px solid var(--neon-atk); border-radius: 8px;
+    padding: 10px; flex: 1; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+    align-items: center; justify-content: center;
+  }
+  .tribute-select-card.double-rank { border-color: var(--neon-cyan); }
+  .tribute-select-card:active { background: rgba(255,42,95,0.3); }
+
+  .floating-text {
+    position: absolute; pointer-events: none; z-index: 99;
+    font-size: 16px; font-weight: 900; color: #fff; text-shadow: 0 0 8px #000;
+    animation: floatUp 0.85s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(0) scale(0.9); opacity: 1; }
+    100% { transform: translateY(-45px) scale(1.15); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-fx"></div>
+
+<div id="app-root">
+  <div class="top-bar">
+    <span style="font-weight:900; color:var(--neon-cyan);" id="header-mode-title">DISPUT // ABSORBER ONLINE</span>
+    <span id="deck-stats">DECK: 52 | ABLAGE: 0</span>
+    <div class="top-tools">
+      <button class="btn-icon" onclick="openModeSelect()" title="Spielmodus">👥 MODUS</button>
+      <button class="btn-icon" onclick="openLegend()">📖</button>
+      <button class="btn-icon" id="btn-audio" onclick="toggleAudio()">🔊</button>
+      <button class="btn-icon" onclick="toggleFullScreen()">⛶</button>
+    </div>
+  </div>
+
+  <div id="phase-tracker">
+    <div class="phase-step active" id="pstep-draw">1. ZIEHEN / MARKT</div>
+    <div class="phase-step" id="pstep-deploy">2. LEGEN / FUSION</div>
+    <div class="phase-step" id="pstep-combat">3. KAMPF</div>
+  </div>
+
+  <div class="status-bar" id="top-status-bar">
+    <span id="top-name-label">BOT (KI) <span id="b-hand-cnt" style="color:var(--text-muted); font-size:11px;">(4)</span></span>
+    <span>LP: <span id="b-lp" class="val-lp">30</span></span>
+  </div>
+
+  <div id="arena">
+    <div class="lane" id="bot-lane">
+      <div class="slot" data-slot="0" onclick="onSlotClick('top', 0)">ZONE 1</div>
+      <div class="slot" data-slot="1" onclick="onSlotClick('top', 1)">ZONE 2</div>
+      <div class="slot" data-slot="2" onclick="onSlotClick('top', 2)">ZONE 3</div>
+    </div>
+
+    <div id="bot-action-banner"></div>
+
+    <div id="mid-bar">
+      <button class="sys-btn" id="btn-draw" onclick="triggerPaidDraft()">DRAFT (1AP)</button>
+      <button class="sys-btn" id="btn-market" onclick="openMarket()">MARKT (1AP)</button>
+      <div id="status-log">Phase 1: Ziehen oder weitergehen</div>
+      <button class="sys-btn btn-phase" id="btn-phase-advance" onclick="advancePhase()">LEGEN ⏩</button>
+    </div>
+
+    <div class="lane" id="player-lane">
+      <div class="slot" data-slot="0" onclick="onSlotClick('bottom', 0)">ZONE 1</div>
+      <div class="slot" data-slot="1" onclick="onSlotClick('bottom', 1)">ZONE 2</div>
+      <div class="slot" data-slot="2" onclick="onSlotClick('bottom', 2)">ZONE 3</div>
+    </div>
+  </div>
+
+  <div class="status-bar player">
+    <span id="bottom-name-label">DU: LP <span id="p-lp" class="val-lp">30</span></span>
+    <span>AP: <span id="p-ap" class="val-ap">2/2</span></span>
+  </div>
+
+  <div id="hand-bar"></div>
+</div>
+
+<div id="modal-inspect" class="modal-overlay" onclick="closeInspectModal()">
+  <div class="inspect-card-box" onclick="event.stopPropagation()">
+    <div class="inspect-header">
+      <div class="inspect-name" id="insp-name">ABSORBER</div>
+      <div class="inspect-cost" id="insp-cost">2 AP | TRIBUT: 2</div>
+    </div>
+    <div class="inspect-stats-row">
+      <div class="inspect-stat" style="color:var(--neon-atk);">
+        <span id="insp-atk">⚔ 0</span>
+        <small>ANGRIFF</small>
+      </div>
+      <div class="inspect-stat" style="color:var(--neon-def);">
+        <span id="insp-def">🛡 10</span>
+        <small>VERTEIDIGUNG</small>
+      </div>
+    </div>
+    <div class="inspect-desc-box" id="insp-desc">
+      Effektbeschreibung...
+    </div>
+    <button class="btn-action btn-gray" onclick="closeInspectModal()">✕ Schließen</button>
+  </div>
+</div>
+
+<div id="modal-mode" class="modal-overlay">
+  <div class="choice-box">
+    <h3 style="color:var(--neon-gold); font-size:14px;">🎮 SPIELMODUS WÄHLEN</h3>
+    <div style="font-size:11px; color:#c7d6eb;">Wähle, wie du antreten möchtest:</div>
+    <button class="btn-action btn-atk" onclick="setGameMode('BOT')">🤖 Einzelspieler vs. KI</button>
+    <button class="btn-action btn-def" onclick="setGameMode('HOTSEAT')">👥 Hot Seat (2 Spieler)</button>
+    <button class="btn-action btn-gray" onclick="closeModals()">Schließen</button>
+  </div>
+</div>
+
+<div id="modal-turn-pass" class="modal-overlay">
+  <div class="choice-box">
+    <h3 id="pass-title" style="color:var(--neon-gold); font-size:16px;">SPIELERWECHSEL</h3>
+    <div id="pass-desc" style="font-size:12px; color:#c7d6eb; margin:8px 0;">Bitte das Gerät übergeben!</div>
+    <button class="btn-action btn-fuse" onclick="confirmTurnPass()">BEREIT! WEITER ⚔️</button>
+  </div>
+</div>
+
+<div id="modal-tribute" class="modal-overlay">
+  <div class="choice-box">
+    <h3 style="color:var(--neon-atk); font-size:14px;">☠️ TRIBUT: EINHEIT OPFERN</h3>
+    <div id="tribute-prompt-txt" style="font-size:11px; color:#c7d6eb;">Wähle die Opfer (Rang 2 zählt als 2):</div>
+    <div class="m-row" id="tribute-options-row" style="margin: 8px 0;"></div>
+    <button class="btn-action btn-gray" onclick="closeModals()">Abbrechen</button>
+  </div>
+</div>
+
+<div id="modal-legend" class="modal-overlay">
+  <div class="choice-box" style="max-width:440px;">
+    <h3 style="color:var(--neon-gold); font-size:14px; text-align:center;">📖 REGELN & ABLAUF</h3>
+    <div style="font-size:11px; text-align:left; line-height:1.45; display:flex; flex-direction:column; gap:8px;">
+      <div><b style="color:var(--neon-cyan);">★ ABSORBER (0/10):</b> Solange er liegt, schützt er deinen Kern vor JEDEM Schaden (gegnerischer Angriff, Durchschlag & Recoil)! Kann aber selbst keine Karten zerstören.</div>
+      <div><b style="color:var(--neon-purple);">★ SoA (JOKER):</b> Kopiert beim Legen automatisch die höchsten Werte aller Einheiten auf dem Feld.</div>
+      <div><b style="color:var(--neon-gold);">★ DOPPEL-TRIBUT:</b> Rang 2+ Einheiten zählen direkt als 2 Opfer für 10er Titanen!</div>
+    </div>
+    <button class="btn-action btn-gray" onclick="closeModals()">Schließen</button>
+  </div>
+</div>
+
+<div id="modal-card-action" class="modal-overlay">
+  <div class="choice-box">
+    <h3 id="m-card-name" style="color:var(--neon-gold); font-size:14px;"></h3>
+    <div id="m-card-stats" style="font-size:12px; font-weight:bold;"></div>
+    <div id="m-card-eff-desc" style="font-size:11px; color:#c7d6eb; min-height:24px;"></div>
+    <div class="m-row" id="m-deploy-row">
+      <button class="btn-action btn-atk" onclick="deployChosen('ATK')">Kämpfer: ATK</button>
+      <button class="btn-action btn-def" onclick="deployChosen('DEF')">Kämpfer: DEF</button>
+    </div>
+    <button class="btn-action btn-fuse" id="btn-fuse-action" style="display:none;">★ FUSIONIEREN (1 AP)</button>
+    <button class="btn-action btn-purple" id="btn-use-eff" onclick="triggerChosenEff()">Effekt nutzen (1 AP)</button>
+    <button class="btn-action btn-gray" onclick="closeModals()">Abbrechen</button>
+  </div>
+</div>
+
+<div id="modal-draft" class="modal-overlay">
+  <div class="choice-box">
+    <h3 style="color:var(--neon-gold); font-size:13px;">DRAFT (1 AP GEZAHLT)</h3>
+    <div style="font-size:10px; color:var(--text-muted);">Wähle 1 Karte für deine Hand:</div>
+    <div class="m-row" id="draft-cards-row" style="justify-content:center; margin:8px 0;"></div>
+  </div>
+</div>
+
+<div id="modal-market" class="modal-overlay">
+  <div class="choice-box" style="max-width:420px;">
+    <h3 style="color:var(--neon-gold); font-size:13px;">ZENTRALER MARKT (1 AP)</h3>
+    <div style="font-size:10px; color:var(--neon-def);">Sofort spielbar!</div>
+    <div class="m-row" id="market-cards-row" style="justify-content:center; margin:8px 0;"></div>
+    <button class="btn-action btn-gray" onclick="closeModals()">Schließen</button>
+  </div>
+</div>
+
+<script>
+let audioCtx = null;
+let soundEnabled = true;
+let musicMasterGain = null;
+let bgmInterval = null;
+let bgmStep = 0;
+
+function initAudio() {
+  if (!audioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) audioCtx = new AudioContext();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  if (audioCtx && !musicMasterGain) {
+    musicMasterGain = audioCtx.createGain();
+    musicMasterGain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+    musicMasterGain.connect(audioCtx.destination);
+    startForbiddenMemoriesBGM();
+  }
+}
+window.addEventListener('pointerdown', initAudio, { once: true });
+window.addEventListener('touchstart', initAudio, { once: true });
+
+function toggleAudio() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('btn-audio').innerText = soundEnabled ? '🔊' : '🔇';
+  if(soundEnabled) {
+    initAudio();
+    if(musicMasterGain) musicMasterGain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  } else {
+    if(musicMasterGain) musicMasterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  }
+}
+
+const BASS_LINE = [
+  73.42, 73.42, 146.83, 73.42, 73.42, 146.83, 73.42, 110.00,
+  65.41, 65.41, 130.81, 65.41, 65.41, 130.81, 65.41, 98.00,
+  58.27, 58.27, 116.54, 58.27, 58.27, 116.54, 58.27, 87.31,
+  65.41, 65.41, 130.81, 65.41, 73.42, 87.31, 98.00, 110.00
+];
+
+const LEAD_LINE = [
+  293.66, 0, 349.23, 440.00, 523.25, 440.00, 349.23, 293.66,
+  261.63, 0, 329.63, 392.00, 440.00, 392.00, 329.63, 261.63,
+  233.08, 0, 293.66, 349.23, 392.00, 349.23, 293.66, 233.08,
+  261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 523.25, 587.33
+];
+
+function startForbiddenMemoriesBGM() {
+  if (bgmInterval) clearInterval(bgmInterval);
+  const stepTime = (60 / 138) / 2 * 1000;
+  
+  bgmInterval = setInterval(() => {
+    if (!soundEnabled || !audioCtx || musicMasterGain.gain.value === 0) return;
+    const now = audioCtx.currentTime;
+    const stepIdx = bgmStep % 32;
+
+    const bFreq = BASS_LINE[stepIdx];
+    if (bFreq) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(bFreq, now);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(450, now);
+      filter.frequency.exponentialRampToValueAtTime(120, now + 0.16);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(musicMasterGain);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    }
+
+    const lFreq = LEAD_LINE[stepIdx];
+    if (lFreq > 0) {
+      const leadOsc = audioCtx.createOscillator();
+      const leadGain = audioCtx.createGain();
+      leadOsc.type = "square";
+      leadOsc.frequency.setValueAtTime(lFreq, now);
+      leadGain.gain.setValueAtTime(0.08, now);
+      leadGain.gain.exponentialRampToValueAtTime(0.005, now + 0.14);
+      leadOsc.connect(leadGain);
+      leadGain.connect(musicMasterGain);
+      leadOsc.start(now);
+      leadOsc.stop(now + 0.15);
+    }
+
+    if (stepIdx % 4 === 0) {
+      const kick = audioCtx.createOscillator();
+      const kGain = audioCtx.createGain();
+      kick.type = "sine";
+      kick.frequency.setValueAtTime(120, now);
+      kick.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+      kGain.gain.setValueAtTime(0.4, now);
+      kGain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+      kick.connect(kGain);
+      kGain.connect(musicMasterGain);
+      kick.start(now);
+      kick.stop(now + 0.1);
+    } else if (stepIdx % 4 === 2) {
+      const bufferSize = audioCtx.sampleRate * 0.04;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const nFilter = audioCtx.createBiquadFilter();
+      nFilter.type = "highpass";
+      nFilter.frequency.setValueAtTime(3000, now);
+      const nGain = audioCtx.createGain();
+      nGain.gain.setValueAtTime(0.12, now);
+      nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+      noise.connect(nFilter);
+      nFilter.connect(nGain);
+      nGain.connect(musicMasterGain);
+      noise.start(now);
+    }
+
+    bgmStep++;
+  }, stepTime);
+}
+
+const Sound = {
+  cardDraw() {
+    if (!soundEnabled || !audioCtx) return;
+    const bufferSize = audioCtx.sampleRate * 0.12;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(1400, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.12);
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    noise.start();
+  },
+  cardDrop() {
+    if (!soundEnabled || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.14);
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.14);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+  },
+  fusion() {
+    if (!soundEnabled || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.28);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  },
+  slash() {
+    if (!soundEnabled || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(550, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.16);
+    gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.16);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.17);
+  },
+  explosion() {
+    if (!soundEnabled || !audioCtx) return;
+    const bufferSize = audioCtx.sampleRate * 0.35;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(600, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.35);
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    noise.start();
+  }
+};
+
+const DECK_COMPOSITION = [
+  { name: "REKRUT",    atk: 5, def: 2, icon: "⚔️", cost: 1, eff: null, trait: "STURM", count: 5, desc: "Passiv: Greift sofort nach Ausspielen an!" },
+  { name: "SPÄHER",    atk: 4, def: 3, icon: "🎯", cost: 1, eff: null, trait: "DURCHSCHLAG", count: 5, desc: "Passiv: Zieht immer vollen Durchschlag durch!" },
+  { name: "POSTEN",    atk: 3, def: 4, icon: "🛡️", cost: 1, eff: null, trait: "STANDHAFT", count: 5, desc: "Passiv: Kann nicht in Haltung gedreht werden!" },
+  { name: "SCHILD",    atk: 2, def: 5, icon: "🔰", cost: 1, eff: null, trait: "PANZER", count: 5, desc: "Passiv: Halbiert Rammbock-Rückstoßschaden!" },
+
+  { name: "SoA",       atk: 0, def: 0, icon: "✨", isJoker: true, cost: 1, eff: null, trait: "SPIEGEL", count: 4, desc: "Joker: Übernimmt beim Betreten die höchsten Feldwerte!" },
+
+  { name: "TURBINE",   atk: 6, def: 3, icon: "⚙️", cost: 1, eff: "STAERKEN",  trait: null, count: 4, desc: "+2 ATK Ausrüstung" },
+  { name: "KRAFTFELD", atk: 3, def: 6, icon: "💠", cost: 1, eff: "PANZERN",   trait: null, count: 4, desc: "+2 DEF Ausrüstung" },
+  { name: "UMLEITUNG", atk: 5, def: 5, icon: "⟳", cost: 1, eff: "DREHEN",    trait: null, count: 3, desc: "Dreht Haltung (ATK/DEF)" },
+  { name: "ENTLADUNG", atk: 7, def: 2, icon: "⚡", cost: 2, eff: "ENTWAFFNEN",trait: null, count: 3, desc: "Tribut 1: Zerstört gegn. Buff" },
+  { name: "SPALTUNG",  atk: 4, def: 4, icon: "✂️", cost: 1, eff: "SPALTUNG",  trait: null, count: 2, desc: "Zerstört gegn. Fusionen!" },
+
+  { name: "OVERDRIVE", atk: 10, def: 0, icon: "💥", cost: 2, eff: "KILL",     trait: null, count: 3, desc: "Tribut 2: Zerstört 1 Kämpfer" },
+  
+  // ABSORBER MIT NEUER PASSIV-SCHUTZ-MECHANIK
+  { name: "ABSORBER",  atk: 0,  def: 10,icon: "🌀", cost: 2, eff: null, trait: "ABSORBER", count: 3, desc: "Passiv: Blockiert jeglichen LP-Schaden (auch Recoil) solange er liegt!" },
+  
+  { name: "ROTOR",     atk: 9,  def: 1, icon: "🌪️", cost: 2, eff: "ADRENALIN",trait: null, count: 2, desc: "Tribut 1: Sofort +2 AP" },
+  { name: "PANZER",    atk: 1,  def: 9, icon: "🧱", cost: 2, eff: "BELEBEN",  trait: null, count: 2, desc: "Tribut 1: Holt Kämpfer aus Ablage" },
+  { name: "SPLITTER",  atk: 8,  def: 2, icon: "🗡️", cost: 2, eff: "SCHWAECHEN",trait: null, count: 2, desc: "Tribut 1: Senkt Werte um -2/-2" }
+];
+
+let G = {
+  gameMode: 'BOT',
+  deck: [], market: [], discard: [],
+  round: 1, 
+  turn: "P1",
+  currentPhase: 'DRAW',
+  
+  p1LP: 30, p1AP: 2, p1Board: [null, null, null], p1Hand: [],
+  p2LP: 30, p2AP: 2, p2Board: [null, null, null], p2Hand: [],
+  
+  selectedHandIdx: null,
+  activeMode: null,
+  attackerSlot: null,
+  draftPool: [],
+  tributeCardIdx: null,
+  tributeRequired: 0,
+  tributeSelectedSlots: [],
+  tributeDeployMode: null
+};
+
+// PRÜFT OB DER JEWEILIGE SPIELER EINEN ABSORBER KONTROLLIERT
+function hasAbsorberShield(playerSide) {
+  const board = (playerSide === 'P1') ? G.p1Board : G.p2Board;
+  return board.some(u => u && u.trait === 'ABSORBER');
+}
+
+function getTributeRequirement(card) {
+  if (card.isJoker) return 0;
+  const maxVal = Math.max(card.atk, card.def);
+  if (maxVal >= 10) return 2;
+  if (maxVal >= 7) return 1;
+  return 0;
+}
+
+function initGame() {
+  G.deck = [];
+  DECK_COMPOSITION.forEach(c => {
+    for(let i=0; i<c.count; i++) {
+      G.deck.push({
+        id: Math.random().toString(36).substr(2,9),
+        name: c.name, atk: c.atk, def: c.def,
+        baseAtk: c.atk, baseDef: c.def,
+        icon: c.icon,
+        isJoker: !!c.isJoker,
+        cost: c.cost, eff: c.eff, trait: c.trait, desc: c.desc,
+        buffAtk: 0, buffDef: 0,
+        rank: 1, stackCount: 1
+      });
+    }
+  });
+  G.deck.sort(() => Math.random() - 0.5);
+
+  G.p1Hand = [];
+  G.p2Hand = [];
+  G.market = [];
+  G.discard = [];
+  G.p1Board = [null, null, null];
+  G.p2Board = [null, null, null];
+  G.p1LP = 30;
+  G.p2LP = 30;
+  G.p1AP = 2;
+  G.p2AP = 2;
+  G.round = 1;
+  G.turn = "P1";
+  G.currentPhase = 'DRAW';
+
+  for(let i=0; i<4; i++) G.p1Hand.push(drawCardSafe());
+  for(let i=0; i<4; i++) G.p2Hand.push(drawCardSafe());
+  for(let i=0; i<3; i++) G.market.push(drawCardSafe());
+
+  updateModeUI();
+  updatePhaseUI();
+  render();
+}
+
+function openModeSelect() {
+  document.getElementById('modal-mode').style.display = 'flex';
+}
+
+function setGameMode(mode) {
+  G.gameMode = mode;
+  closeModals();
+  initGame();
+  log(`Neues Spiel: ${mode === 'BOT' ? 'Einzelspieler vs. KI' : 'Hot Seat (2 Spieler)'}`);
+}
+
+function updateModeUI() {
+  const header = document.getElementById('header-mode-title');
+  const topLabel = document.getElementById('top-name-label');
+  const bottomLabel = document.getElementById('bottom-name-label');
+
+  if(G.gameMode === 'BOT') {
+    header.innerText = "DISPUT // CYBER-BOT";
+    topLabel.innerHTML = `BOT (KI) <span id="b-hand-cnt" style="color:var(--text-muted); font-size:11px;">(${G.p2Hand.length})</span>`;
+    bottomLabel.innerHTML = `DU: LP <span id="p-lp" class="val-lp">${G.p1LP}</span>`;
+  } else {
+    header.innerText = "DISPUT // HOT SEAT";
+    topLabel.innerHTML = `SPIELER 2 <span id="b-hand-cnt" style="color:var(--text-muted); font-size:11px;">(${G.p2Hand.length})</span>`;
+    bottomLabel.innerHTML = `SPIELER 1: LP <span id="p-lp" class="val-lp">${G.p1LP}</span>`;
+  }
+}
+
+function drawCardSafe() {
+  if(G.deck.length === 0) {
+    if(G.discard.length === 0) return null;
+    G.deck = [...G.discard].sort(() => Math.random() - 0.5);
+    G.discard = [];
+    log("Ablagestapel neu gemischt!");
+  }
+  return G.deck.pop();
+}
+
+function getActiveBoard() { return G.turn === 'P1' ? G.p1Board : G.p2Board; }
+function getOpponentBoard() { return G.turn === 'P1' ? G.p2Board : G.p1Board; }
+function getActiveHand() { return G.turn === 'P1' ? G.p1Hand : G.p2Hand; }
+function getActiveAP() { return G.turn === 'P1' ? G.p1AP : G.p2AP; }
+function deductActiveAP(cost) { if(G.turn === 'P1') G.p1AP -= cost; else G.p2AP -= cost; }
+
+function advancePhase() {
+  if(G.turn === 'BOT') return;
+
+  if(G.currentPhase === 'DRAW') {
+    G.currentPhase = 'DEPLOY';
+    log("Phase 2: Einheiten legen & fusionieren");
+  } else if(G.currentPhase === 'DEPLOY') {
+    G.currentPhase = 'COMBAT';
+    log("Phase 3: Kampfphase! Wähle deine Angreifer");
+  } else if(G.currentPhase === 'COMBAT') {
+    endTurn();
+    return;
+  }
+  updatePhaseUI();
+  render();
+}
+
+function updatePhaseUI() {
+  const pDraw = document.getElementById('pstep-draw');
+  const pDep = document.getElementById('pstep-deploy');
+  const pCom = document.getElementById('pstep-combat');
+  const btnAdv = document.getElementById('btn-phase-advance');
+  const btnDraw = document.getElementById('btn-draw');
+  const btnMkt = document.getElementById('btn-market');
+
+  pDraw.classList.remove('active');
+  pDep.classList.remove('active');
+  pCom.classList.remove('active');
+
+  const currentAP = getActiveAP();
+
+  if(G.currentPhase === 'DRAW') {
+    pDraw.classList.add('active');
+    btnAdv.innerText = "ZUR LEGEPHASE ⏩";
+    btnAdv.className = "sys-btn btn-phase";
+    btnAdv.style.background = "#0066cc";
+    btnDraw.disabled = (currentAP < 1);
+    btnMkt.disabled = (currentAP < 1);
+
+    if (currentAP >= 1) {
+      btnDraw.classList.add('focus-action');
+      btnMkt.classList.add('focus-action');
+    } else {
+      btnDraw.classList.remove('focus-action');
+      btnMkt.classList.remove('focus-action');
+    }
+  } else if(G.currentPhase === 'DEPLOY') {
+    pDep.classList.add('active');
+    btnAdv.innerText = "ZUM KAMPF ⚔️";
+    btnAdv.className = "sys-btn btn-phase";
+    btnAdv.style.background = "#0066cc";
+    btnDraw.disabled = true;
+    btnMkt.disabled = true;
+    btnDraw.classList.remove('focus-action');
+    btnMkt.classList.remove('focus-action');
+  } else if(G.currentPhase === 'COMBAT') {
+    pCom.classList.add('active');
+    btnAdv.innerText = "RUNDE BEENDEN 🛑";
+    btnAdv.className = "sys-btn";
+    btnAdv.style.background = "#c1121f";
+    btnDraw.disabled = true;
+    btnMkt.disabled = true;
+    btnDraw.classList.remove('focus-action');
+    btnMkt.classList.remove('focus-action');
+  }
+}
+
+function render() {
+  const isP1 = (G.turn === 'P1');
+  const currentBoard = isP1 ? G.p1Board : G.p2Board;
+  const oppBoard = isP1 ? G.p2Board : G.p1Board;
+  const currentLP = isP1 ? G.p1LP : G.p2LP;
+  const oppLP = isP1 ? G.p2LP : G.p1LP;
+  const currentAP = isP1 ? G.p1AP : G.p2AP;
+  const currentHand = isP1 ? G.p1Hand : G.p2Hand;
+  const oppHand = isP1 ? G.p2Hand : G.p1Hand;
+
+  document.getElementById('p-lp').innerText = currentLP;
+  document.getElementById('p-ap').innerText = `${currentAP}/2`;
+  document.getElementById('b-lp').innerText = oppLP;
+  document.getElementById('b-hand-cnt').innerText = `(${oppHand.length})`;
+  document.getElementById('deck-stats').innerText = `DECK: ${G.deck.length} | ABLAGE: ${G.discard.length}`;
+
+  const topLabel = document.getElementById('top-name-label');
+  const bottomLabel = document.getElementById('bottom-name-label');
+
+  if(G.gameMode === 'HOTSEAT') {
+    bottomLabel.innerHTML = `${isP1 ? 'SPIELER 1' : 'SPIELER 2'}: LP <span id="p-lp" class="val-lp">${currentLP}</span>`;
+    topLabel.innerHTML = `${isP1 ? 'SPIELER 2' : 'SPIELER 1'} <span id="b-hand-cnt" style="color:var(--text-muted); font-size:11px;">(${oppHand.length})</span>`;
+  }
+
+  updatePhaseUI();
+  renderBoardLane('player-lane', currentBoard, true);
+  renderBoardLane('bot-lane', oppBoard, false);
+  renderHand(currentHand);
+}
+
+function renderBoardLane(elemId, boardData, isBottom) {
+  const lane = document.getElementById(elemId);
+  const slots = lane.querySelectorAll('.slot');
+  slots.forEach((slot, i) => {
+    slot.classList.remove('target-highlight');
+    const c = boardData[i];
+    if(!c) {
+      slot.innerHTML = `ZONE ${i+1}<br><span style="font-size:9px; opacity:0.6;">[LEER]</span>`;
+    } else {
+      const effAtk = c.atk + c.buffAtk;
+      const effDef = c.def + c.buffDef;
+      const rankBadge = c.rank > 1 ? `<div class="bc-rank">★ R${c.rank}</div>` : '';
+      const buffBadge = (c.buffAtk > 0 || c.buffDef > 0) ? `<span style="color:var(--neon-gold);">★+${c.buffAtk}/${c.buffDef}</span>` : ``;
+      slot.innerHTML = `
+        <div class="board-card mode-${c.mode.toLowerCase()} ${c.exhausted ? 'exhausted':''}">
+          ${rankBadge}
+          <div class="bc-name" style="${c.isJoker ? 'color:var(--neon-cyan);' : (c.trait==='ABSORBER'?'color:var(--neon-cyan);':'')}">${c.name}</div>
+          <div class="card-holo-core">${c.icon || '⚔️'}</div>
+          <div class="bc-stats">
+            <span style="color:var(--neon-atk);">⚔${effAtk}</span>
+            <span style="color:var(--neon-def);">🛡${effDef}</span>
+          </div>
+          <div class="bc-meta">
+            <span>${c.mode}</span>
+            ${buffBadge}
+          </div>
+        </div>
+      `;
+    }
+  });
+}
+
+function renderHand(handList) {
+  const container = document.getElementById('hand-bar');
+  container.innerHTML = "";
+  handList.forEach((c, idx) => {
+    const el = document.createElement('div');
+    const isDeployPhase = G.currentPhase === 'DEPLOY';
+    el.className = `hand-card ${c.cost === 2 ? 'titan' : ''} ${c.isJoker ? 'joker' : ''} ${G.selectedHandIdx === idx ? 'selected' : ''} ${!isDeployPhase ? 'disabled-phase' : ''}`;
+    
+    let pressTimer = null;
+    let isLongPress = false;
+
+    const startPress = () => {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        openInspectCard(c);
+      }, 450);
+    };
+
+    const cancelPress = () => {
+      if(pressTimer) clearTimeout(pressTimer);
+    };
+
+    el.onpointerdown = startPress;
+    el.onpointerup = () => {
+      cancelPress();
+      if(!isLongPress) {
+        selectHandCard(idx);
+      }
+    };
+    el.onpointerleave = cancelPress;
+    el.onpointercancel = cancelPress;
+
+    const trib = getTributeRequirement(c);
+    const tribBadge = trib > 0 ? `<span style="color:var(--neon-atk);">TRIB ${trib}</span>` : `<span>${c.cost}AP</span>`;
+    const statAtk = c.isJoker ? 'X' : c.atk;
+    const statDef = c.isJoker ? 'X' : c.def;
+
+    el.innerHTML = `
+      <div class="hc-badge">
+        <span style="${c.isJoker ? 'color:var(--neon-cyan);' : ''}">${c.isJoker ? 'JOKER' : (c.cost === 2 ? 'TITAN' : '1 AP')}</span>
+        ${tribBadge}
+      </div>
+      <div style="font-weight:900; font-size:11px; text-align:center; ${c.isJoker ? 'color:var(--neon-gold);' : ''}">${c.name}</div>
+      <div class="card-holo-core" style="font-size:22px;">${c.icon || '🛡️'}</div>
+      <div class="hc-stats">
+        <span style="color:var(--neon-atk);">⚔${statAtk}</span>
+        <span style="color:var(--neon-def);">🛡${statDef}</span>
+      </div>
+      <div class="hc-eff">${c.trait ? `<b style="color:var(--neon-cyan);">${c.trait}:</b> ${c.desc}` : (c.eff ? `<b style="color:var(--neon-purple);">${c.eff}:</b> ${c.desc}` : 'Reiner Kämpfer')}</div>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function openInspectCard(card) {
+  Sound.cardDraw();
+  const trib = getTributeRequirement(card);
+  document.getElementById('insp-name').innerText = card.name;
+  document.getElementById('insp-cost').innerText = `${card.cost} AP ${trib > 0 ? `| TRIBUT: ${trib}` : (card.isJoker ? '| JOKER' : '| KEIN TRIBUT')}`;
+  document.getElementById('insp-atk').innerText = `⚔ ${card.isJoker ? 'X' : card.atk}`;
+  document.getElementById('insp-def').innerText = `🛡 ${card.isJoker ? 'X' : card.def}`;
+
+  let descHTML = "";
+  if(card.trait === "ABSORBER") {
+    descHTML += `<div style="color:var(--neon-cyan); font-weight:900; margin-bottom:4px;">★ PASSIV: [ABSORBER]</div>`;
+    descHTML += `<div>Solange diese Karte auf dem Spielfeld liegt, absorbiert ihr Energieschild jeglichen Schaden auf deine Lebenspunkte! Du nimmst weder Schaden durch gegnerische Treffer noch Rammbock-Rückstoß.</div>`;
+  } else if(card.isJoker) {
+    descHTML += `<div style="color:var(--neon-gold); font-weight:900; margin-bottom:4px;">★ JOKER: [SPIEGEL]</div>`;
+    descHTML += `<div>Übernimmt beim Platzieren sofort die höchsten Werte aller aktiven Einheiten im Spiel! Liegt niemand, startet SoA mit 0/0.</div>`;
+  } else if(card.trait) {
+    descHTML += `<div style="color:var(--neon-cyan); font-weight:900; margin-bottom:4px;">★ PASSIV: [${card.trait}]</div>`;
+    descHTML += `<div>${card.desc}</div>`;
+  } else if(card.eff) {
+    descHTML += `<div style="color:var(--neon-purple); font-weight:900; margin-bottom:4px;">⚡ HAND-EFFEKT: [${card.eff}] (1 AP)</div>`;
+    descHTML += `<div>${card.desc}</div>`;
+    descHTML += `<div style="color:var(--neon-gold); font-size:10px; margin-top:6px;">*Wird dieser Titan als Sofort-Effekt aus der Hand abgeworfen, ist KEIN Tribut nötig!</div>`;
+  } else {
+    descHTML = "Solider Standard-Kämpfer ohne Zusatzeffekte.";
+  }
+
+  document.getElementById('insp-desc').innerHTML = descHTML;
+  document.getElementById('modal-inspect').style.display = 'flex';
+}
+
+function closeInspectModal() {
+  document.getElementById('modal-inspect').style.display = 'none';
+}
+
+function selectHandCard(idx) {
+  if(G.turn === 'BOT') return;
+  if(G.currentPhase !== 'DEPLOY') {
+    log("Karten dürfen nur in Phase 2 (Legen/Fusionieren) gespielt werden!");
+    return;
+  }
+  Sound.cardDraw();
+  const hand = getActiveHand();
+  const c = hand[idx];
+  G.selectedHandIdx = idx;
+  render();
+
+  const trib = getTributeRequirement(c);
+  const modal = document.getElementById('modal-card-action');
+  document.getElementById('m-card-name').innerText = `${c.name} (${c.cost} AP)`;
+  
+  const displayAtk = c.isJoker ? 'X' : c.atk;
+  const displayDef = c.isJoker ? 'X' : c.def;
+
+  document.getElementById('m-card-stats').innerHTML = `Werte: <span style="color:var(--neon-atk);">⚔${displayAtk}</span> | <span style="color:var(--neon-def);">🛡${displayDef}</span> ${trib > 0 ? `<b style="color:var(--neon-atk); margin-left:6px;">[TRIBUT: ${trib}]</b>` : ''}`;
+  document.getElementById('m-card-eff-desc').innerHTML = c.eff 
+    ? `<b>Effekt:</b> ${c.desc}<br><span style="color:var(--neon-gold);">Hand-Effekt (1 AP) erfordert KEINEN Tribut!</span>` 
+    : `<b>Passiv:</b> [${c.trait}] – ${c.desc}`;
+
+  const currentBoard = getActiveBoard();
+  const targetSlotIdx = currentBoard.findIndex(u => u && u.name === c.name && u.rank < 3);
+  const fuseBtn = document.getElementById('btn-fuse-action');
+  
+  if (targetSlotIdx !== -1 && !c.isJoker) {
+    fuseBtn.style.display = 'block';
+    fuseBtn.innerText = `★ MIT ZONE ${targetSlotIdx + 1} FUSIONIEREN (1 AP)`;
+    fuseBtn.onclick = () => executeDirectFusion(idx, targetSlotIdx);
+  } else {
+    fuseBtn.style.display = 'none';
+  }
+
+  document.getElementById('btn-use-eff').style.display = c.eff ? 'block' : 'none';
+  modal.style.display = 'flex';
+}
+
+function executeDirectFusion(sourceHandIdx, targetSlotIdx) {
+  if (getActiveAP() < 1) {
+    log("Fusion erfordert 1 AP!");
+    closeModals();
+    return;
+  }
+  
+  const currentBoard = getActiveBoard();
+  const hand = getActiveHand();
+  const baseUnit = currentBoard[targetSlotIdx];
+  const handCard = hand[sourceHandIdx];
+
+  if (!baseUnit || !handCard || baseUnit.name !== handCard.name) {
+    closeModals();
+    return;
+  }
+
+  deductActiveAP(1);
+  baseUnit.rank += 1;
+  baseUnit.stackCount += 1;
+  baseUnit.atk += 2;
+  baseUnit.def += 2;
+  baseUnit.exhausted = false;
+
+  hand.splice(sourceHandIdx, 1);
+  G.selectedHandIdx = null;
+
+  closeModals();
+  Sound.fusion();
+  triggerScreenShake();
+  showFloatingText(`★ RANG ${baseUnit.rank}!`, targetSlotIdx, 'bottom');
+  log(`${baseUnit.name} zu Rang ${baseUnit.rank} fusioniert! Bereit zum Angriff!`);
+  render();
+}
+
+function deployChosen(mode) {
+  const hand = getActiveHand();
+  const c = hand[G.selectedHandIdx];
+  if(getActiveAP() < c.cost) {
+    log("Nicht genug AP!");
+    closeModals();
+    return;
+  }
+
+  const tribReq = getTributeRequirement(c);
+  const currentBoard = getActiveBoard();
+  const availableTributeValue = currentBoard.reduce((sum, u) => sum + (u ? (u.rank > 1 ? 2 : 1) : 0), 0);
+
+  if(tribReq > 0 && availableTributeValue < tribReq) {
+    log(`Tribut erforderlich! Du benötigst Opferwert von ${tribReq} (Rang 2 zählt als 2).`);
+    closeModals();
+    return;
+  }
+
+  if(tribReq > 0) {
+    const savedHandIdx = G.selectedHandIdx;
+    closeModals();
+    openTributeModal(savedHandIdx, mode, tribReq);
+    return;
+  }
+
+  const emptyIdx = currentBoard.findIndex(z => z === null);
+  if(emptyIdx === -1) {
+    log("Alle Zonen sind besetzt!");
+    closeModals();
+    return;
+  }
+
+  finalizeDeploymentDirect(c, G.selectedHandIdx, emptyIdx, mode);
+}
+
+function openTributeModal(cardIdx, mode, requiredCount) {
+  G.tributeCardIdx = cardIdx;
+  G.tributeDeployMode = mode;
+  G.tributeRequired = requiredCount;
+  G.tributeSelectedSlots = [];
+
+  updateTributeModalUI();
+  document.getElementById('modal-tribute').style.display = 'flex';
+}
+
+function updateTributeModalUI() {
+  const container = document.getElementById('tribute-options-row');
+  container.innerHTML = "";
+  
+  const currentBoard = getActiveBoard();
+  const currentVal = G.tributeSelectedSlots.reduce((sum, idx) => sum + (currentBoard[idx].rank > 1 ? 2 : 1), 0);
+  const remaining = Math.max(0, G.tributeRequired - currentVal);
+  document.getElementById('tribute-prompt-txt').innerText = `Wähle noch Opferwert von ${remaining} (Rang 2+ zählt als 2):`;
+
+  currentBoard.forEach((unit, slotIdx) => {
+    if(unit && !G.tributeSelectedSlots.includes(slotIdx)) {
+      const isDouble = unit.rank > 1;
+      const cardEl = document.createElement('div');
+      cardEl.className = `tribute-select-card ${isDouble ? 'double-rank' : ''}`;
+      cardEl.onclick = () => selectTributeVictim(slotIdx);
+      cardEl.innerHTML = `
+        <div style="font-weight:bold; font-size:11px; color:#fff;">Zone ${slotIdx+1}</div>
+        <div style="font-weight:900; color:var(--neon-gold); font-size:12px;">${unit.name} ${isDouble ? '★ R'+unit.rank : ''}</div>
+        <div style="font-size:11px;">⚔${unit.atk + unit.buffAtk} | 🛡${unit.def + unit.buffDef}</div>
+        <div style="font-size:9px; color:${isDouble ? 'var(--neon-cyan)' : 'var(--neon-atk)'}; font-weight:bold; margin-top:4px;">
+          ${isDouble ? '[DOPPEL-TRIBUT: WERT 2]' : '[OPFERN: WERT 1]'}
+        </div>
+      `;
+      container.appendChild(cardEl);
+    }
+  });
+}
+
+function selectTributeVictim(slotIdx) {
+  G.tributeSelectedSlots.push(slotIdx);
+  Sound.slash();
+
+  const currentBoard = getActiveBoard();
+  const currentTributeValue = G.tributeSelectedSlots.reduce((sum, idx) => sum + (currentBoard[idx].rank > 1 ? 2 : 1), 0);
+
+  if(currentTributeValue < G.tributeRequired) {
+    updateTributeModalUI();
+  } else {
+    document.getElementById('modal-tribute').style.display = 'none';
+
+    const landingSlot = G.tributeSelectedSlots[0];
+    G.tributeSelectedSlots.forEach(idx => {
+      const victim = currentBoard[idx];
+      for(let s=0; s<(victim.stackCount || 1); s++) {
+        G.discard.push({ ...victim, rank: 1, stackCount: 1 });
+      }
+      currentBoard[idx] = null;
+      showFloatingText("OPFER ☠️", idx, 'bottom');
+    });
+
+    Sound.explosion();
+    triggerScreenShake();
+
+    const hand = getActiveHand();
+    const cardToDeploy = hand[G.tributeCardIdx];
+    finalizeDeploymentDirect(cardToDeploy, G.tributeCardIdx, landingSlot, G.tributeDeployMode);
+  }
+}
+
+function finalizeDeploymentDirect(card, handIdx, targetSlotIdx, mode) {
+  if (!card) return;
+
+  deductActiveAP(card.cost);
+  card.mode = mode;
+  card.exhausted = (card.trait === "STURM" && mode === 'ATK') ? false : true;
+
+  if (card.isJoker) {
+    const allBoardUnits = [...G.p1Board, ...G.p2Board].filter(u => u !== null);
+    if (allBoardUnits.length > 0) {
+      let maxAtk = 0;
+      let maxDef = 0;
+      allBoardUnits.forEach(u => {
+        if ((u.atk + u.buffAtk) > maxAtk) maxAtk = u.atk + u.buffAtk;
+        if ((u.def + u.buffDef) > maxDef) maxDef = u.def + u.buffDef;
+      });
+      card.atk = maxAtk;
+      card.def = maxDef;
+      card.baseAtk = maxAtk;
+      card.baseDef = maxDef;
+      log(`SoA spiegelt die Arena: Übernimmt ⚔${maxAtk} / 🛡${maxDef}!`);
+    } else {
+      card.atk = 0;
+      card.def = 0;
+      card.baseAtk = 0;
+      card.baseDef = 0;
+      log("SoA betritt ein leeres Schlachtfeld (0/0).");
+    }
+  }
+
+  const currentBoard = getActiveBoard();
+  const hand = getActiveHand();
+
+  currentBoard[targetSlotIdx] = card;
+  if(handIdx !== -1) hand.splice(handIdx, 1);
+
+  G.selectedHandIdx = null;
+  G.tributeCardIdx = null;
+  G.tributeSelectedSlots = [];
+  G.activeMode = null;
+
+  closeModals();
+  Sound.cardDrop();
+  triggerScreenShake();
+
+  if(card.trait === "ABSORBER") {
+    showFloatingText("🌀 SCHUTZFELD!", targetSlotIdx, 'bottom');
+    log("ABSORBER aktiv: Dein Kern ist vor jeglichem Schaden geschützt!");
+  } else if (card.isJoker) {
+    showFloatingText(`✨ SPIEGEL ⚔${card.atk}!`, targetSlotIdx, 'bottom');
+  } else if(card.trait === "STURM" && mode === 'ATK') {
+    showFloatingText("⚡ STURM!", targetSlotIdx, 'bottom');
+    log(`${card.name} hat STURM und ist sofort bereit!`);
+  } else {
+    log(`${card.name} als ${mode}-Kämpfer platziert.`);
+  }
+  render();
+}
+
+function triggerChosenEff() {
+  const hand = getActiveHand();
+  const c = hand[G.selectedHandIdx];
+  if(getActiveAP() < 1) {
+    log("Effekt benötigt 1 AP!");
+    closeModals();
+    return;
+  }
+
+  if(c.eff === "ADRENALIN") {
+    if(G.turn === 'P1') G.p1AP = Math.min(4, G.p1AP + 2);
+    else G.p2AP = Math.min(4, G.p2AP + 2);
+    G.discard.push(c);
+    hand.splice(G.selectedHandIdx, 1);
+    closeModals();
+    Sound.cardDrop();
+    log("Adrenalin! +2 AP erhalten.");
+    render();
+    return;
+  }
+  if(c.eff === "BELEBEN") {
+    const revived = G.discard.pop();
+    if(revived) {
+      hand.push(revived);
+      log(`${revived.name} aus der Ablage wiederbelebt!`);
+    } else {
+      log("Ablagestapel ist leer!");
+    }
+    G.discard.push(c);
+    hand.splice(G.selectedHandIdx, 1);
+    deductActiveAP(1);
+    closeModals();
+    Sound.cardDraw();
+    render();
+    return;
+  }
+
+  closeModals();
+  G.activeMode = `EFF_${c.eff}`;
+  highlightTargets(c.eff);
+  log(`Wähle ein Ziel für ${c.name} (${c.eff})!`);
+}
+
+function highlightTargets(eff) {
+  const pSlots = document.querySelectorAll('#player-lane .slot');
+  const bSlots = document.querySelectorAll('#bot-lane .slot');
+
+  const currentBoard = getActiveBoard();
+  const oppBoard = getOpponentBoard();
+
+  if(eff === "STAERKEN" || eff === "PANZERN" || eff === "DREHEN") {
+    pSlots.forEach((s, i) => { if(currentBoard[i]) s.classList.add('target-highlight'); });
+  } else if(eff === "KILL" || eff === "SCHWAECHEN" || eff === "ENTWAFFNEN") {
+    bSlots.forEach((s, i) => { if(oppBoard[i]) s.classList.add('target-highlight'); });
+  } else if(eff === "SPALTUNG") {
+    bSlots.forEach((s, i) => { if(oppBoard[i] && oppBoard[i].rank > 1) s.classList.add('target-highlight'); });
+  }
+}
+
+function onSlotClick(side, idx) {
+  if(G.turn === 'BOT') return;
+
+  const currentBoard = getActiveBoard();
+  const oppBoard = getOpponentBoard();
+  const isBottom = (side === 'bottom');
+
+  if(G.activeMode && G.activeMode.startsWith('EFF_')) {
+    const hand = getActiveHand();
+    const cardUsed = hand[G.selectedHandIdx];
+    if(isBottom && currentBoard[idx]) {
+      const target = currentBoard[idx];
+      if(G.activeMode === 'EFF_STAERKEN') { target.buffAtk += 2; showFloatingText("+2 ATK", idx, 'bottom'); }
+      if(G.activeMode === 'EFF_PANZERN')  { target.buffDef += 2; showFloatingText("+2 DEF", idx, 'bottom'); }
+      if(G.activeMode === 'EFF_DREHEN')   { 
+        if(target.trait === "STANDHAFT") {
+          log(`${target.name} ist STANDHAFT und kann nicht gedreht werden!`);
+          return;
+        }
+        target.mode = (target.mode === 'ATK' ? 'DEF' : 'ATK'); 
+        showFloatingText("⟳ Haltung", idx, 'bottom'); 
+      }
+      Sound.cardDrop();
+      finishEffectUse(cardUsed);
+      return;
+    }
+    if(!isBottom && oppBoard[idx]) {
+      const target = oppBoard[idx];
+      if(G.activeMode === 'EFF_KILL') {
+        Sound.explosion();
+        triggerScreenShake();
+        showFloatingText("💥 VERNICHTET!", idx, 'top');
+        G.discard.push(target);
+        oppBoard[idx] = null;
+      }
+      if(G.activeMode === 'EFF_SCHWAECHEN') {
+        target.buffAtk = Math.max(-target.atk, target.buffAtk - 2);
+        target.buffDef = Math.max(-target.def, target.buffDef - 2);
+        Sound.slash();
+        showFloatingText("-2/-2", idx, 'top');
+      }
+      if(G.activeMode === 'EFF_ENTWAFFNEN') {
+        target.buffAtk = 0; target.buffDef = 0;
+        Sound.slash();
+        showFloatingText("🚫 Entwaffnet", idx, 'top');
+      }
+      if(G.activeMode === 'EFF_SPALTUNG') {
+        if(target.rank > 1) {
+          const removedCards = target.stackCount - 1;
+          for(let r=0; r<removedCards; r++) G.discard.push({ ...target, rank: 1, stackCount: 1 });
+          target.atk = target.baseAtk;
+          target.def = target.baseDef;
+          target.rank = 1;
+          target.stackCount = 1;
+          Sound.explosion();
+          triggerScreenShake();
+          showFloatingText("⚡ SPALTUNG!", idx, 'top');
+        }
+      }
+      finishEffectUse(cardUsed);
+      return;
+    }
+  }
+
+  if(isBottom) {
+    if(G.currentPhase !== 'COMBAT') {
+      log("Angriffe sind erst in Phase 3 (Kampf) erlaubt!");
+      return;
+    }
+    const c = currentBoard[idx];
+    if(!c || c.exhausted || c.mode !== 'ATK') {
+      if(c && c.mode === 'DEF') log("Verteidiger können nicht angreifen!");
+      return;
+    }
+    if(getActiveAP() < 1) { log("Angriff kostet 1 AP!"); return; }
+
+    G.attackerSlot = idx;
+    G.activeMode = "ATTACK";
+    document.querySelectorAll('#bot-lane .slot').forEach(s => s.classList.add('target-highlight'));
+    log(`${c.name} zielt: Wähle gegnerische Zone!`);
+    return;
+  }
+
+  if(!isBottom && G.activeMode === "ATTACK") {
+    const attacker = currentBoard[G.attackerSlot];
+    const target = oppBoard[idx];
+    const hasDefenders = oppBoard.some(z => z !== null);
+
+    deductActiveAP(1);
+    attacker.exhausted = true;
+    G.activeMode = null;
+
+    const defenderHasAbsorber = (G.turn === 'P1') ? hasAbsorberShield('BOT') : hasAbsorberShield('P1');
+    const attackerHasAbsorber = hasAbsorberShield(G.turn);
+
+    if(!target) {
+      if(hasDefenders) {
+        log("Gegnerische Einheiten blockieren den direkten Angriff!");
+      } else {
+        const dmg = attacker.atk + attacker.buffAtk;
+        if(defenderHasAbsorber) {
+          showFloatingText("🌀 ABSORBIERT!", idx, 'top');
+          log("ABSORBER-SCHILD schluckt den direkten Treffer! 0 Schaden.");
+        } else {
+          if(G.turn === 'P1') G.p2LP = Math.max(0, G.p2LP - dmg);
+          else G.p1LP = Math.max(0, G.p1LP - dmg);
+          Sound.slash();
+          triggerScreenShake();
+          showFloatingText(`-${dmg} LP`, idx, 'top');
+          log(`DIREKTER TREFFER! -${dmg} LP beim Gegner.`);
+        }
+      }
+    } else {
+      const aVal = attacker.atk + attacker.buffAtk;
+      const dVal = (target.mode === 'DEF' ? target.def + target.buffDef : target.atk + target.buffAtk);
+
+      if(aVal > dVal) {
+        const diff = aVal - dVal;
+        const trampleDmg = (attacker.trait === "DURCHSCHLAG") ? diff : Math.max(1, Math.ceil(diff / 2));
+        log(`${attacker.name} (⚔${aVal}) schlägt ${target.name} (${dVal})!`);
+        
+        if(defenderHasAbsorber) {
+          showFloatingText("🌀 ABSORBIERT!", idx, 'top');
+          log("Gegnerischer ABSORBER schluckt den Durchschlagsschaden! 0 LP Verlust.");
+        } else {
+          if(G.turn === 'P1') G.p2LP = Math.max(0, G.p2LP - trampleDmg);
+          else G.p1LP = Math.max(0, G.p1LP - trampleDmg);
+          showFloatingText(`-${trampleDmg} LP`, idx, 'top');
+        }
+
+        Sound.explosion();
+        triggerScreenShake();
+        G.discard.push(target);
+        oppBoard[idx] = null;
+      } else if(aVal === dVal) {
+        log(`DOPPEL-K.O.! Beide Einheiten vernichtet!`);
+        Sound.explosion();
+        triggerScreenShake();
+        showFloatingText("💥 CRASH!", idx, 'top');
+        showFloatingText("💥 CRASH!", G.attackerSlot, 'bottom');
+        G.discard.push(target);
+        G.discard.push(attacker);
+        oppBoard[idx] = null;
+        currentBoard[G.attackerSlot] = null;
+      } else {
+        let recoil = dVal - aVal;
+        if(attacker.trait === "PANZER") recoil = Math.max(1, Math.ceil(recoil / 2));
+
+        log(`RAMMBOCK! ${attacker.name} zerschellt! Mauer bricht!`);
+        
+        // RECOIL WIRD DURCH ABSORBER BLOCKIERT!
+        if(attackerHasAbsorber) {
+          showFloatingText("🌀 ABSORBIERT!", G.attackerSlot, 'bottom');
+          log("Dein ABSORBER schützt dich vor dem Rückstoß! 0 LP Verlust.");
+        } else {
+          if(G.turn === 'P1') G.p1LP = Math.max(0, G.p1LP - recoil);
+          else G.p2LP = Math.max(0, G.p2LP - recoil);
+          showFloatingText(`-${recoil} RECOIL`, G.attackerSlot, 'bottom');
+        }
+
+        Sound.explosion();
+        triggerScreenShake();
+        showFloatingText(`💥 ZERSTÖRT`, idx, 'top');
+        G.discard.push(target);
+        G.discard.push(attacker);
+        oppBoard[idx] = null;
+        currentBoard[G.attackerSlot] = null;
+      }
+    }
+    checkGameOver();
+    render();
+  }
+}
+
+function finishEffectUse(card) {
+  deductActiveAP(1);
+  G.discard.push(card);
+  const hand = getActiveHand();
+  hand.splice(G.selectedHandIdx, 1);
+  G.activeMode = null;
+  G.selectedHandIdx = null;
+  render();
+}
+
+function triggerPaidDraft() {
+  if(G.turn === 'BOT' || G.currentPhase !== 'DRAW') {
+    log("Draften nur in Phase 1 (Ziehen) erlaubt!"); return;
+  }
+  if(getActiveAP() < 1) { log("Draft-Ziehen kostet 1 AP!"); return; }
+
+  const c1 = drawCardSafe();
+  const c2 = drawCardSafe();
+  if(!c1) { log("Keine Karten mehr verfügbar!"); return; }
+
+  deductActiveAP(1);
+  Sound.cardDraw();
+  G.draftPool = [c1, c2].filter(c => c !== null);
+
+  if(G.draftPool.length === 1) {
+    getActiveHand().push(G.draftPool[0]);
+    render();
+    return;
+  }
+
+  const row = document.getElementById('draft-cards-row');
+  row.innerHTML = "";
+  G.draftPool.forEach((c, idx) => {
+    const el = document.createElement('div');
+    el.className = `hand-card ${c.cost===2?'titan':''} ${c.isJoker ? 'joker' : ''}`;
+    const trib = getTributeRequirement(c);
+    const tribBadge = trib > 0 ? `<span style="color:var(--neon-atk);">TRIB ${trib}</span>` : `<span>${c.cost}AP</span>`;
+    const statAtk = c.isJoker ? 'X' : c.atk;
+    const statDef = c.isJoker ? 'X' : c.def;
+
+    el.innerHTML = `
+      <div class="hc-badge"><span>${c.isJoker ? 'JOKER' : (c.cost===2?'TITAN':'1 AP')}</span>${tribBadge}</div>
+      <div style="font-weight:900; font-size:11px; text-align:center;">${c.name}</div>
+      <div class="card-holo-core" style="font-size:20px;">${c.icon || '🛡️'}</div>
+      <div class="hc-stats"><span style="color:var(--neon-atk);">⚔${statAtk}</span><span style="color:var(--neon-def);">🛡${statDef}</span></div>
+      <button class="btn-action btn-atk" style="padding:6px; font-size:10px; font-weight:800;" onclick="chooseDraftCard(${idx})">Wählen</button>
+    `;
+    row.appendChild(el);
+  });
+  document.getElementById('modal-draft').style.display = 'flex';
+  render();
+}
+
+function chooseDraftCard(idx) {
+  const chosen = G.draftPool[idx];
+  const discarded = G.draftPool[idx === 0 ? 1 : 0];
+  getActiveHand().push(chosen);
+  if(discarded) G.discard.push(discarded);
+  Sound.cardDraw();
+  document.getElementById('modal-draft').style.display = 'none';
+  log(`${chosen.name} auf Hand genommen.`);
+  render();
+}
+
+function openMarket() {
+  if(G.turn === 'BOT' || G.currentPhase !== 'DRAW') {
+    log("Markt nur in Phase 1 (Ziehen) nutzbar!"); return;
+  }
+  Sound.cardDraw();
+  const row = document.getElementById('market-cards-row');
+  row.innerHTML = "";
+  G.market.forEach((c, idx) => {
+    const el = document.createElement('div');
+    el.className = `hand-card ${c.cost===2?'titan':''} ${c.isJoker ? 'joker' : ''}`;
+    const trib = getTributeRequirement(c);
+    const tribBadge = trib > 0 ? `<span style="color:var(--neon-atk);">TRIB ${trib}</span>` : `<span>${c.cost}AP</span>`;
+    const statAtk = c.isJoker ? 'X' : c.atk;
+    const statDef = c.isJoker ? 'X' : c.def;
+
+    el.innerHTML = `
+      <div class="hc-badge"><span>${c.isJoker ? 'JOKER' : (c.cost===2?'TITAN':'1 AP')}</span>${tribBadge}</div>
+      <div style="font-weight:900; font-size:11px; text-align:center;">${c.name}</div>
+      <div class="card-holo-core" style="font-size:20px;">${c.icon || '🛡️'}</div>
+      <div class="hc-stats"><span style="color:var(--neon-atk);">⚔${statAtk}</span><span style="color:var(--neon-def);">🛡${statDef}</span></div>
+      <button class="btn-action btn-atk" style="padding:6px; font-size:10px; font-weight:800;" onclick="buyMarketCard(${idx})">Kaufen (1 AP)</button>
+    `;
+    row.appendChild(el);
+  });
+  document.getElementById('modal-market').style.display = 'flex';
+}
+
+function buyMarketCard(idx) {
+  if(getActiveAP() < 1) { log("Markt erfordert 1 AP!"); return; }
+  deductActiveAP(1);
+
+  const card = G.market[idx];
+  getActiveHand().push(card);
+  G.market[idx] = drawCardSafe();
+  Sound.cardDraw();
+  closeModals();
+  log(`${card.name} aus Markt gekauft!`);
+  render();
+}
+
+function openLegend() {
+  document.getElementById('modal-legend').style.display = 'flex';
+}
+
+function endTurn() {
+  G.activeMode = null;
+  closeModals();
+
+  if(G.gameMode === 'BOT') {
+    G.turn = 'BOT';
+    document.getElementById('btn-phase-advance').disabled = true;
+    document.getElementById('btn-draw').disabled = true;
+    document.getElementById('btn-market').disabled = true;
+    log("Computer führt Zug aus...");
+    render();
+    setTimeout(botRoutineStepByStep, 800);
+  } else {
+    const nextPlayer = (G.turn === 'P1') ? 'P2' : 'P1';
+    const nextPlayerName = (nextPlayer === 'P1') ? 'SPIELER 1' : 'SPIELER 2';
+    
+    document.getElementById('pass-title').innerText = `BEREIT FÜR ${nextPlayerName}?`;
+    document.getElementById('pass-desc').innerText = `Bitte das Gerät an ${nextPlayerName} übergeben. Tippe auf "BEREIT", sobald du das Gerät in der Hand hast!`;
+    document.getElementById('modal-turn-pass').style.display = 'flex';
+  }
+}
+
+function confirmTurnPass() {
+  document.getElementById('modal-turn-pass').style.display = 'none';
+  G.turn = (G.turn === 'P1') ? 'P2' : 'P1';
+  G.currentPhase = 'DRAW';
+
+  if(G.turn === 'P1') {
+    G.round++;
+    G.p1AP = 2;
+    G.p1Board.forEach(c => { if(c) c.exhausted = false; });
+  } else {
+    G.p2AP = 2;
+    G.p2Board.forEach(c => { if(c) c.exhausted = false; });
+  }
+
+  document.getElementById('btn-phase-advance').disabled = false;
+  updatePhaseUI();
+  log(`Runde ${G.round}: ${G.turn === 'P1' ? 'Spieler 1' : 'Spieler 2'} ist am Zug! (Phase 1)`);
+  render();
+}
+
+function displayBotAction(text, onComplete) {
+  const banner = document.getElementById('bot-action-banner');
+  banner.innerText = text;
+  banner.style.display = 'block';
+  log(text);
+  setTimeout(() => {
+    banner.style.display = 'none';
+    if(onComplete) onComplete();
+  }, 1200);
+}
+
+function botRoutineStepByStep() {
+  G.p2AP = 2;
+  G.p2Board.forEach(c => { if(c) c.exhausted = false; });
+
+  const stepDraw = () => {
+    const hasDeployableUnit = G.p2Hand.some(c => {
+      const trib = getTributeRequirement(c);
+      const currentTribVal = G.p2Board.reduce((s, u) => s + (u ? (u.rank > 1 ? 2 : 1) : 0), 0);
+      return c.cost <= G.p2AP && currentTribVal >= trib;
+    });
+
+    if((G.p2Hand.length <= 2 || !hasDeployableUnit) && G.p2AP >= 1) {
+      const cheapMarketIdx = G.market.findIndex(c => c && getTributeRequirement(c) === 0 && c.cost <= G.p2AP);
+      if(cheapMarketIdx !== -1) {
+        const bought = G.market[cheapMarketIdx];
+        G.p2Hand.push(bought);
+        G.market[cheapMarketIdx] = drawCardSafe();
+        G.p2AP -= 1;
+        Sound.cardDraw();
+        render();
+        displayBotAction(`KI kauft ${bought.name} aus dem Markt! 🛒`, stepTributeAndDeploy);
+        return;
+      } else {
+        const drafted = drawCardSafe();
+        const tossed = drawCardSafe();
+        if(drafted) G.p2Hand.push(drafted);
+        if(tossed) G.discard.push(tossed);
+        G.p2AP -= 1;
+        Sound.cardDraw();
+        render();
+        displayBotAction("KI nutzt 1 AP für Draft-Ziehung 🃏", stepTributeAndDeploy);
+        return;
+      }
+    }
+    stepTributeAndDeploy();
+  };
+
+  const stepTributeAndDeploy = () => {
+    const playerThreat = G.p1Board.reduce((max, u) => (u && (u.atk + u.buffAtk) > (max ? max.atk + max.buffAtk : 0)) ? u : max, null);
+    const pThreatVal = playerThreat ? playerThreat.atk + playerThreat.buffAtk : 0;
+
+    const killIdx = G.p2Hand.findIndex(c => c.eff === 'KILL');
+    if(killIdx !== -1 && playerThreat && pThreatVal >= 7 && G.p2AP >= 1) {
+      const kCard = G.p2Hand.splice(killIdx, 1)[0];
+      const targetSlot = G.p1Board.indexOf(playerThreat);
+      G.discard.push(playerThreat);
+      G.p1Board[targetSlot] = null;
+      G.discard.push(kCard);
+      G.p2AP -= 1;
+      Sound.explosion();
+      triggerScreenShake();
+      showFloatingText("💥 VERNICHTET!", targetSlot, 'bottom');
+      render();
+      displayBotAction(`KI wirft ${kCard.name} ab und vernichtet deinen ${playerThreat.name}! 💣`, stepCombat);
+      return;
+    }
+
+    const spaltungIdx = G.p2Hand.findIndex(c => c.eff === 'SPALTUNG');
+    const fusedPlayerUnit = G.p1Board.find(u => u && u.rank > 1);
+    if(spaltungIdx !== -1 && fusedPlayerUnit && G.p2AP >= 1) {
+      const sCard = G.p2Hand.splice(spaltungIdx, 1)[0];
+      const targetSlot = G.p1Board.indexOf(fusedPlayerUnit);
+      fusedPlayerUnit.atk = fusedPlayerUnit.baseAtk;
+      fusedPlayerUnit.def = fusedPlayerUnit.baseDef;
+      fusedPlayerUnit.rank = 1;
+      fusedPlayerUnit.stackCount = 1;
+      G.discard.push(sCard);
+      G.p2AP -= 1;
+      Sound.explosion();
+      triggerScreenShake();
+      showFloatingText("⚡ DEMONTIERT!", targetSlot, 'bottom');
+      render();
+      displayBotAction(`KI wirkt SPALTUNG auf ${fusedPlayerUnit.name}! ⚡`, stepCombat);
+      return;
+    }
+
+    const soaIdx = G.p2Hand.findIndex(c => c.isJoker);
+    if (soaIdx !== -1 && pThreatVal >= 6 && G.p2AP >= 1) {
+      const targetSlot = G.p2Board.findIndex(z => z === null);
+      if (targetSlot !== -1) {
+        const soaCard = G.p2Hand.splice(soaIdx, 1)[0];
+        finalizeDeploymentDirect(soaCard, -1, targetSlot, 'ATK');
+        displayBotAction(`KI spielt SoA und spiegelt die Arena! ✨`, stepCombat);
+        return;
+      }
+    }
+
+    const botUnitsOnBoard = G.p2Board.map((u, i) => u ? i : -1).filter(i => i !== -1);
+    const botTotalTributeVal = G.p2Board.reduce((sum, u) => sum + (u ? (u.rank > 1 ? 2 : 1) : 0), 0);
+
+    const playableIdx = G.p2Hand.findIndex(c => {
+      if (c.cost > G.p2AP) return false;
+      const trib = getTributeRequirement(c);
+      return botTotalTributeVal >= trib;
+    });
+
+    if(playableIdx !== -1) {
+      const c = G.p2Hand.splice(playableIdx, 1)[0];
+      const trib = getTributeRequirement(c);
+      G.p2AP -= c.cost;
+
+      let targetSlot = -1;
+      if(trib > 0) {
+        let victimSlot = -1;
+        if(trib === 2) {
+          victimSlot = G.p2Board.findIndex(u => u && u.rank > 1);
+        }
+        if(victimSlot !== -1) {
+          const v = G.p2Board[victimSlot];
+          for(let s = 0; s < (v.stackCount || 1); s++) G.discard.push({ ...v, rank: 1, stackCount: 1 });
+          G.p2Board[victimSlot] = null;
+          targetSlot = victimSlot;
+          c.exhausted = (c.trait === "STURM") ? false : true;
+          c.mode = (pThreatVal >= 7 && c.def >= 3) ? 'DEF' : 'ATK';
+          G.p2Board[targetSlot] = c;
+          Sound.cardDrop();
+          render();
+          displayBotAction(`KI opfert Rang 2 für ${c.name}! ☠️`, stepCombat);
+          return;
+        } else {
+          botUnitsOnBoard.sort((a,b) => (G.p2Board[a].atk + G.p2Board[a].def) - (G.p2Board[b].atk + G.p2Board[b].def));
+          for(let t = 0; t < trib; t++) {
+            const vSlot = botUnitsOnBoard[t];
+            G.discard.push(G.p2Board[vSlot]);
+            G.p2Board[vSlot] = null;
+            targetSlot = vSlot;
+          }
+          c.exhausted = (c.trait === "STURM") ? false : true;
+          c.mode = (pThreatVal >= 7 && c.def >= 3) ? 'DEF' : 'ATK';
+          G.p2Board[targetSlot] = c;
+          Sound.cardDrop();
+          render();
+          displayBotAction(`KI opfert ${trib} Einheit(en) für ${c.name}! ☠️`, stepCombat);
+          return;
+        }
+      } else {
+        targetSlot = G.p2Board.findIndex(z => z === null);
+        if(targetSlot !== -1) {
+          c.exhausted = (c.trait === "STURM") ? false : true;
+          c.mode = (pThreatVal >= 7 && c.def >= 3) ? 'DEF' : ((c.def >= 5 || pThreatVal >= 8) ? 'DEF' : 'ATK');
+          finalizeDeploymentDirect(c, -1, targetSlot, c.mode);
+          displayBotAction(`KI platziert ${c.name} in ${c.mode} 🛡️`, stepCombat);
+          return;
+        }
+      }
+    }
+    stepCombat();
+  };
+
+  const stepCombat = () => {
+    if(G.p2AP >= 1) {
+      const readyAttacker = G.p2Board.find(c => c && !c.exhausted && c.mode === 'ATK');
+      if(readyAttacker) {
+        const aVal = readyAttacker.atk + readyAttacker.buffAtk;
+        const attackerSlot = G.p2Board.indexOf(readyAttacker);
+        const targetIdx = G.p1Board.findIndex(u => u && (u.mode === 'DEF' ? u.def + u.buffDef : u.atk + u.buffAtk) <= aVal);
+
+        const playerHasAbsorber = hasAbsorberShield('P1');
+        const botHasAbsorber = hasAbsorberShield('BOT');
+
+        if(targetIdx !== -1) {
+          const dead = G.p1Board[targetIdx];
+          const targetVal = dead.mode === 'DEF' ? dead.def + dead.buffDef : dead.atk + dead.buffAtk;
+
+          if(aVal > targetVal) {
+            const diff = aVal - targetVal;
+            const trample = (readyAttacker.trait === 'DURCHSCHLAG') ? diff : Math.max(1, Math.ceil(diff / 2));
+            G.discard.push(dead);
+            G.p1Board[targetIdx] = null;
+            G.p2AP -= 1;
+            readyAttacker.exhausted = true;
+
+            if(playerHasAbsorber) {
+              showFloatingText("🌀 ABSORBIERT!", targetIdx, 'bottom');
+              log("Dein ABSORBER neutralisiert den gegnerischen Durchschlag!");
+            } else {
+              G.p1LP = Math.max(0, G.p1LP - trample);
+              showFloatingText(`-${trample} LP`, targetIdx, 'bottom');
+            }
+
+            Sound.explosion();
+            triggerScreenShake();
+            render();
+            displayBotAction(`KI schlägt ${dead.name}! 💥`, finishBotTurn);
+            return;
+          } else {
+            G.discard.push(dead);
+            G.discard.push(readyAttacker);
+            G.p1Board[targetIdx] = null;
+            G.p2Board[attackerSlot] = null;
+            G.p2AP -= 1;
+            Sound.explosion();
+            triggerScreenShake();
+            showFloatingText("💥 CRASH", targetIdx, 'bottom');
+            render();
+            displayBotAction(`KI greift an: Doppel-K.O.! 💥`, finishBotTurn);
+            return;
+          }
+        } else if(G.p1Board.some(u => u !== null)) {
+          const wallIdx = G.p1Board.findIndex(u => u !== null);
+          const wall = G.p1Board[wallIdx];
+          const wVal = wall.mode === 'DEF' ? wall.def + wall.buffDef : wall.atk + wall.buffAtk;
+          const recoil = wVal - aVal;
+          if(recoil <= 3 && G.p2LP > recoil) {
+            G.discard.push(wall);
+            G.discard.push(readyAttacker);
+            G.p1Board[wallIdx] = null;
+            G.p2Board[attackerSlot] = null;
+            
+            if(botHasAbsorber) {
+              showFloatingText("🌀 ABSORBIERT!", attackerSlot, 'top');
+              log("KI-ABSORBER blockiert Recoil!");
+            } else {
+              G.p2LP -= recoil;
+              showFloatingText(`-${recoil} RECOIL`, attackerSlot, 'top');
+            }
+
+            G.p2AP -= 1;
+            Sound.explosion();
+            triggerScreenShake();
+            render();
+            displayBotAction(`KI rammt deine Mauer ${wall.name}! 💥`, finishBotTurn);
+            return;
+          }
+        } else {
+          G.p2AP -= 1;
+          readyAttacker.exhausted = true;
+
+          if(playerHasAbsorber) {
+            showFloatingText("🌀 ABSORBIERT!", 1, 'bottom');
+            log("Dein ABSORBER fängt den direkten Treffer der KI ab! 0 LP Verlust.");
+          } else {
+            G.p1LP = Math.max(0, G.p1LP - aVal);
+            Sound.slash();
+            triggerScreenShake();
+            showFloatingText(`-${aVal} LP`, 1, 'bottom');
+            displayBotAction(`KI greift direkt an! -${aVal} LP auf deinen Kern! ⚡`, finishBotTurn);
+            render();
+            return;
+          }
+
+          render();
+          displayBotAction(`KI greift an, wird aber komplett absorbiert! 🌀`, finishBotTurn);
+          return;
+        }
+      }
+    }
+    finishBotTurn();
+  };
+
+  const finishBotTurn = () => {
+    checkGameOver();
+    G.round++;
+    G.turn = 'P1';
+    G.currentPhase = 'DRAW';
+    G.p1AP = 2;
+    G.p1Board.forEach(c => { if(c) c.exhausted = false; });
+    document.getElementById('btn-phase-advance').disabled = false;
+    updatePhaseUI();
+    log(`Runde ${G.round}: Dein Zug (Phase 1: Ziehen)`);
+    render();
+  };
+
+  stepDraw();
+}
+
+function log(msg) {
+  document.getElementById('status-log').innerText = msg;
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+  G.activeMode = null;
+  G.selectedHandIdx = null;
+  G.tributeSelectedSlots = [];
+  document.querySelectorAll('.slot').forEach(s => s.classList.remove('target-highlight'));
+  render();
+}
+
+function triggerScreenShake() {
+  const root = document.getElementById('app-root');
+  root.classList.remove('shake');
+  void root.offsetWidth;
+  root.classList.add('shake');
+}
+
+function showFloatingText(txt, slotIdx, side) {
+  const laneId = (side === 'bottom') ? 'player-lane' : 'bot-lane';
+  const slot = document.querySelectorAll(`#${laneId} .slot`)[slotIdx];
+  if(!slot) return;
+
+  const rect = slot.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'floating-text';
+  el.innerText = txt;
+  el.style.left = `${rect.left + rect.width / 4}px`;
+  el.style.top = `${rect.top + rect.height / 3}px`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 850);
+}
+
+function checkGameOver() {
+  if(G.p1LP <= 0) {
+    const winner = (G.gameMode === 'BOT') ? 'Der Computer' : 'Spieler 2';
+    alert(`GAME OVER! ${winner} hat gewonnen!`);
+    initGame();
+  } else if(G.p2LP <= 0) {
+    const winner = (G.gameMode === 'BOT') ? 'Du' : 'Spieler 1';
+    alert(`SIEG! ${winner} hast/hat gewonnen!`);
+    initGame();
+  }
+}
+
+function toggleFullScreen() {
+  if(!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen().catch(()=>{});
+  }
+}
+
+initGame();
+</script>
+</body>
+</html>
